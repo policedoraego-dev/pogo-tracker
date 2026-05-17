@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PoGO Calendar">
 <link rel="manifest" href="/manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <title>ポケモンGO イベントカレンダー</title>
 <style>
 :root {
@@ -574,6 +575,9 @@ select option { background: var(--card); }
     <!-- Add custom -->
     <div class="panel-card" id="section-add">
       <div class="panel-title">➕ イベントを手動追加</div>
+      <div id="sb-notice" style="display:none;background:rgba(255,203,5,.1);border:1px solid #FFCB05;border-radius:8px;padding:10px 12px;font-size:12px;color:#FFCB05;margin-bottom:10px;line-height:1.6">
+        ⚠️ Supabase の設定が必要です。<br>下の手順で設定するとどのデバイスからでも同期できます。
+      </div>
       <div class="form-group">
         <div>
           <div class="form-label">イベント名 *</div>
@@ -723,28 +727,79 @@ let year = new Date().getFullYear();
 let month = new Date().getMonth();
 let selectedDay = null;
 
+// ======= Supabase 設定 =======
+// Supabase ダッシュボードの「Project Settings → API」から取得してここに貼る
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';   // 例: https://xyzxyz.supabase.co
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SB_READY = !SUPABASE_URL.startsWith('YOUR_');
+const sb = SB_READY
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+
+// Supabase 未設定の場合は案内を表示
+if (!SB_READY) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const n = document.getElementById('sb-notice');
+    if (n) n.style.display = 'block';
+  });
+}
+
+// ======= Supabase: カスタムイベント =======
+async function loadCustomEvents() {
+  if (!SB_READY) return [];
+  try {
+    const { data, error } = await sb
+      .from('custom_events')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(r => ({
+      id:        r.id,
+      title:     r.title,
+      type:      r.type || 'default',
+      start:     r.start_time || null,
+      end:       r.end_time   || null,
+      date_text: '',
+      color:     COLORS[r.type] || COLORS.default,
+      image:     '',
+      source:    'custom',
+      url:       '',
+    }));
+  } catch(err) {
+    console.error('Supabase load error:', err);
+    return [];
+  }
+}
+
 // ======= API =======
 async function loadEvents() {
   try {
-    const r = await fetch('/api/events');
-    const d = await r.json();
-    events = d.events || [];
-    setStatus(d.last_updated);
+    const [leekResp, customEvs] = await Promise.all([
+      fetch('/api/events').then(r => r.json()),
+      loadCustomEvents(),
+    ]);
+    events = [...(leekResp.events || []), ...customEvs];
+    setStatus(leekResp.last_updated);
     render();
     renderUpcoming();
   } catch(e) {
+    const customEvs = await loadCustomEvents();
+    events = customEvs;
     setStatus(null, true);
-    console.error(e);
+    render();
+    renderUpcoming();
   }
 }
 
 async function refresh() {
   document.getElementById('lastUpdated').textContent = '更新中...';
   try {
-    const r = await fetch('/api/refresh');
-    const d = await r.json();
-    events = d.events || [];
-    setStatus(d.last_updated);
+    const [leekResp, customEvs] = await Promise.all([
+      fetch('/api/events').then(r => r.json()),
+      loadCustomEvents(),
+    ]);
+    events = [...(leekResp.events || []), ...customEvs];
+    setStatus(leekResp.last_updated);
     render();
     renderUpcoming();
     showToast('イベント情報を更新しました');
@@ -964,44 +1019,62 @@ function openModal(id) {
 function closeModal(e) { if (e.target.id==='overlay') closeModalDirect(); }
 function closeModalDirect() { document.getElementById('overlay').classList.remove('open'); }
 
-// ======= Add Custom Event =======
+// ======= Add Custom Event (Supabase) =======
 async function addEvent() {
+  if (!SB_READY) { showToast('Supabase の設定が必要です', true); return; }
   const title = document.getElementById('fTitle').value.trim();
   if (!title) { showToast('イベント名を入力してください', true); return; }
   const type  = document.getElementById('fType').value;
   const start = document.getElementById('fStart').value || null;
-  const end   = document.getElementById('fEnd').value || null;
+  const end   = document.getElementById('fEnd').value   || null;
+  const id    = `custom-${Date.now()}`;
+
   try {
-    const r = await fetch('/api/custom', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({title, type, start, end}),
+    const { error } = await sb.from('custom_events').insert({
+      id,
+      title,
+      type,
+      start_time: start,
+      end_time:   end,
     });
-    const d = await r.json();
-    if (d.ok) {
-      events.push(d.event);
-      document.getElementById('fTitle').value = '';
-      document.getElementById('fStart').value = '';
-      document.getElementById('fEnd').value = '';
-      render();
-      renderUpcoming();
-      showToast('イベントを追加しました ✓');
-    }
-  } catch(e) {
+    if (error) throw error;
+
+    const ev = {
+      id, title, type, start, end,
+      date_text: '', color: COLORS[type] || COLORS.default,
+      image: '', source: 'custom', url: '',
+    };
+    events.push(ev);
+    document.getElementById('fTitle').value = '';
+    document.getElementById('fStart').value = '';
+    document.getElementById('fEnd').value   = '';
+    render();
+    renderUpcoming();
+    showToast('イベントを追加しました ✓');
+  } catch(err) {
+    console.error(err);
     showToast('追加に失敗しました', true);
   }
 }
 
-// ======= Delete Custom Event =======
+// ======= Delete Custom Event (Supabase) =======
 async function deleteEvent(id, e) {
   e.stopPropagation();
   if (!confirm('このイベントを削除しますか？')) return;
-  await fetch(`/api/custom/${id}`, {method:'DELETE'});
-  events = events.filter(ev => ev.id !== id);
-  render();
-  renderUpcoming();
-  if (selectedDay) selectDay(selectedDay.y, selectedDay.m, selectedDay.d);
-  showToast('削除しました');
+  try {
+    if (SB_READY) {
+      const { error } = await sb.from('custom_events').delete().eq('id', id);
+      if (error) throw error;
+    }
+    events = events.filter(ev => ev.id !== id);
+    render();
+    renderUpcoming();
+    if (selectedDay) selectDay(selectedDay.y, selectedDay.m, selectedDay.d);
+    showToast('削除しました');
+  } catch(err) {
+    console.error(err);
+    showToast('削除に失敗しました', true);
+  }
 }
 
 // ======= Navigation =======
