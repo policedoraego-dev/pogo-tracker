@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 
 PORT = int(os.environ.get('PORT', 3001))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PUBLIC_DIR = os.path.join(BASE_DIR, 'public')
+PUBLIC_DIR = BASE_DIR  # index.html はプロジェクトルートに配置
 CACHE_FILE = os.path.join(BASE_DIR, 'events_cache.json')
 CUSTOM_FILE = os.path.join(BASE_DIR, 'custom_events.json')
 CACHE_DURATION = 30 * 60  # 30 minutes
