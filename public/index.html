@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#07111F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PoGO Calendar">
+<link rel="manifest" href="/manifest.json">
+<title>ポケモンGO イベントカレンダー</title>
+<style>
+:root {
+  --bg: #07111F;
+  --surface: #0D1F36;
+  --card: #132844;
+  --border: #1C3A60;
+  --yellow: #FFCB05;
+  --text: #E2E8F0;
+  --dim: #7A9CC0;
+  --red: #EF4444;
+  --purple: #A855F7;
+  --orange: #F97316;
+  --green: #22C55E;
+  --teal: #14B8A6;
+  --blue: #3B82F6;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ---- HEADER ---- */
+header {
+  background: linear-gradient(135deg, #0A1F3D 0%, #0D2B52 100%);
+  border-bottom: 2px solid var(--yellow);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 32px; height: 32px;
+  background: var(--yellow);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.logo-icon::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 50%;
+  background: #222;
+}
+.logo-icon::before {
+  content: '';
+  position: absolute;
+  width: 8px; height: 8px;
+  background: white;
+  border-radius: 50%;
+  z-index: 2;
+  border: 1.5px solid #333;
+}
+.logo-text {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--yellow);
+  letter-spacing: -0.3px;
+}
+.logo-text span { color: #fff; font-weight: 400; }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.status-wrap { display:flex; align-items:center; gap:6px; }
+.dot { width:8px; height:8px; border-radius:50%; background:#22C55E; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.last-updated { font-size:12px; color:var(--dim); }
+.btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all .15s;
+}
+.btn-yellow { background: var(--yellow); color: #07111F; }
+.btn-yellow:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+}
+.btn-outline:hover { border-color: var(--yellow); color: var(--yellow); }
+
+/* ---- MAIN LAYOUT ---- */
+.main {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  padding: 20px;
+  max-width: 1280px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+/* ---- BOTTOM NAV (mobile only) ---- */
+.bottom-nav { display: none; }
+
+/* ---- TABLET ---- */
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; }
+}
+
+/* ---- MOBILE ---- */
+@media (max-width: 640px) {
+  /* Header compact */
+  header { padding: 10px 14px; }
+  .logo-text { font-size: 15px; }
+  .logo-text span { display: none; }
+  .last-updated { display: none; }
+  .btn { padding: 8px 12px; font-size: 13px; }
+
+  /* Main: single column, space for bottom nav */
+  .main {
+    grid-template-columns: 1fr;
+    padding: 10px;
+    gap: 10px;
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  /* Calendar cells: bigger touch targets, dots on tiny screens */
+  .cal-card { padding: 12px 8px; border-radius: 12px; }
+  .cal-nav { margin-bottom: 10px; }
+  .month-label { font-size: 17px; }
+  .nav-btn { width: 40px; height: 40px; font-size: 18px; }
+  .day {
+    min-height: 58px;
+    padding: 4px 3px;
+    border-radius: 6px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .day-num { font-size: 12px; }
+  .pill { font-size: 8px; padding: 1px 3px; }
+
+  /* Event cards: bigger tap targets */
+  .ev-card { padding: 13px 12px; }
+  .ev-card-title { font-size: 14px; }
+  .ev-card-date { font-size: 12px; }
+  .ev-list { max-height: none; }
+
+  /* Panel card */
+  .panel-card { border-radius: 12px; padding: 14px 12px; }
+
+  /* Form row stack on mobile */
+  .form-row { grid-template-columns: 1fr; }
+  input, select { font-size: 16px; padding: 10px 12px; } /* prevents iOS zoom */
+
+  /* Modal: bottom sheet */
+  .overlay { padding: 0; align-items: flex-end; }
+  .modal {
+    border-radius: 20px 20px 0 0;
+    max-width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 20px 16px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  .modal-close { width: 40px; height: 40px; font-size: 20px; }
+
+  /* Toast above bottom nav */
+  .toast {
+    bottom: calc(68px + env(safe-area-inset-bottom) + 8px);
+    left: 12px; right: 12px;
+    text-align: center;
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bnav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 9px 0;
+    background: none;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    font-family: inherit;
+    transition: color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bnav-btn.active { color: var(--yellow); }
+  .bnav-btn.active .bnav-icon { transform: scale(1.15); }
+  .bnav-icon { font-size: 22px; transition: transform .15s; }
+  .bnav-label { font-size: 10px; font-weight: 700; letter-spacing: .03em; }
+}
+
+/* ---- CALENDAR ---- */
+.cal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.month-label {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--yellow);
+}
+.nav-btn {
+  width: 34px; height: 34px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.nav-btn:hover { background: var(--border); }
+.today-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--dim);
+  cursor: pointer;
+  transition: all .15s;
+}
+.today-btn:hover { color: var(--yellow); border-color: var(--yellow); }
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 6px;
+}
+.wd {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dim);
+  padding: 4px 0;
+  letter-spacing: .04em;
+}
+.wd:first-child { color: #FC5C5C; }
+.wd:last-child  { color: #6BA3FC; }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.day {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 5px 5px 4px;
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color .12s, background .12s;
+  overflow: hidden;
+  position: relative;
+}
+.day:hover { border-color: var(--blue); }
+.day.other { opacity: .3; pointer-events: none; }
+.day.today { border-color: var(--yellow) !important; background: rgba(255,203,5,.08); }
+.day.selected { border-color: var(--blue); background: rgba(59,130,246,.12); }
+.day-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dim);
+  margin-bottom: 3px;
+  line-height: 1;
+}
+.day.today .day-num {
+  color: var(--yellow);
+  font-weight: 800;
+}
+.day:nth-child(7n+1) .day-num { color: #FC5C5C; }
+.day.today:nth-child(7n+1) .day-num { color: var(--yellow); }
+.ev-pills { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: hidden; }
+.pill {
+  font-size: 9.5px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.more-pill {
+  font-size: 9px;
+  color: var(--dim);
+  padding-left: 2px;
+}
+
+/* ---- LEGEND ---- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* ---- RIGHT PANEL ---- */
+.panel { display: flex; flex-direction: column; gap: 16px; }
+.panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+.panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 12px;
+}
+.ev-list { display: flex; flex-direction: column; gap: 8px; max-height: 480px; overflow-y: auto; }
+.ev-list::-webkit-scrollbar { width: 3px; }
+.ev-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.ev-card {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid;
+  cursor: pointer;
+  transition: transform .12s;
+  position: relative;
+}
+.ev-card:hover { transform: translateX(3px); }
+.ev-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 3px;
+  padding-right: 24px;
+}
+.ev-card-date { font-size: 11px; color: var(--dim); margin-bottom: 4px; }
+.ev-type-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  background: rgba(255,255,255,.07);
+}
+.ev-source { font-size: 10px; color: var(--dim); margin-left: 6px; }
+.del-btn {
+  position: absolute;
+  top: 8px; right: 8px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color .1s;
+}
+.del-btn:hover { color: var(--red); }
+
+/* ---- ADD FORM ---- */
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.form-label { font-size: 11px; color: var(--dim); margin-bottom: 3px; }
+input, select, textarea {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color .12s;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--yellow);
+}
+select option { background: var(--card); }
+
+/* ---- LOADING ---- */
+.loading {
+  text-align: center;
+  padding: 32px 0;
+  color: var(--dim);
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--yellow);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin: 0 auto 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- MODAL ---- */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.75);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 460px;
+  width: 100%;
+  position: relative;
+}
+.modal-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+.modal-close:hover { color: var(--text); }
+.modal-img { width:100%; border-radius:10px; margin-bottom:14px; object-fit:cover; max-height:200px; }
+.modal-title { font-size:18px; font-weight:700; margin-bottom:6px; line-height:1.3; }
+.modal-date { font-size:13px; color:var(--dim); margin-bottom:12px; }
+.modal-link { color: var(--blue); font-size:13px; text-decoration:none; }
+.modal-link:hover { text-decoration:underline; }
+
+/* empty state */
+.empty { color:var(--dim); font-size:13px; padding: 8px 0; }
+
+/* toast */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--green);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  z-index: 300;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all .3s;
+  pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"></div>
+    <div class="logo-text">ポケモンGO <span>イベントカレンダー</span></div>
+  </div>
+  <div class="header-right">
+    <div class="status-wrap">
+      <div class="dot" id="statusDot"></div>
+      <span class="last-updated" id="lastUpdated">読み込み中...</span>
+    </div>
+    <button class="btn btn-outline" onclick="refresh()">🔄 更新</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Calendar -->
+  <div class="cal-card">
+    <div class="cal-nav">
+      <button class="nav-btn" onclick="prevMonth()">&#8249;</button>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="month-label" id="monthLabel"></span>
+        <button class="today-btn" onclick="goToday()">今日</button>
+      </div>
+      <button class="nav-btn" onclick="nextMonth()">&#8250;</button>
+    </div>
+
+    <div class="weekdays">
+      <div class="wd">日</div><div class="wd">月</div><div class="wd">火</div>
+      <div class="wd">水</div><div class="wd">木</div><div class="wd">金</div>
+      <div class="wd">土</div>
+    </div>
+
+    <div class="cal-grid" id="calGrid">
+      <div class="loading" style="grid-column:span 7">
+        <div class="spinner"></div>
+        イベントを取得中...
+      </div>
+    </div>
+
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="panel">
+    <!-- Selected day -->
+    <div class="panel-card" id="dayCard" style="display:none">
+      <div class="panel-title" id="dayCardTitle">日のイベント</div>
+      <div class="ev-list" id="dayList"></div>
+    </div>
+
+    <!-- Upcoming -->
+    <div class="panel-card" id="section-events">
+      <div class="panel-title">📅 近日開催のイベント</div>
+      <div class="ev-list" id="upcomingList">
+        <div class="loading"><div class="spinner"></div>読み込み中...</div>
+      </div>
+    </div>
+
+    <!-- Add custom -->
+    <div class="panel-card" id="section-add">
+      <div class="panel-title">➕ イベントを手動追加</div>
+      <div class="form-group">
+        <div>
+          <div class="form-label">イベント名 *</div>
+          <input id="fTitle" type="text" placeholder="例: コミュニティデイ">
+        </div>
+        <div>
+          <div class="form-label">種類</div>
+          <select id="fType">
+            <option value="community_day">コミュニティデイ</option>
+            <option value="raid_hour">レイドアワー</option>
+            <option value="spotlight_hour">スポットライトアワー</option>
+            <option value="go_battle_league">GOバトルリーグ</option>
+            <option value="special_research">特別リサーチ</option>
+            <option value="season">シーズン</option>
+            <option value="default" selected>その他</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div>
+            <div class="form-label">開始日時</div>
+            <input id="fStart" type="datetime-local">
+          </div>
+          <div>
+            <div class="form-label">終了日時</div>
+            <input id="fEnd" type="datetime-local">
+          </div>
+        </div>
+        <button class="btn btn-yellow" style="width:100%" onclick="addEvent()">追加する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Event detail modal -->
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModalDirect()">×</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Bottom navigation (mobile only) -->
+<nav class="bottom-nav">
+  <button class="bnav-btn active" id="btn-calendar" onclick="switchTab('calendar')">
+    <div class="bnav-icon">📅</div>
+    <div class="bnav-label">カレンダー</div>
+  </button>
+  <button class="bnav-btn" id="btn-events" onclick="switchTab('events')">
+    <div class="bnav-icon">📋</div>
+    <div class="bnav-label">イベント</div>
+  </button>
+  <button class="bnav-btn" id="btn-add" onclick="switchTab('add')">
+    <div class="bnav-icon">➕</div>
+    <div class="bnav-label">追加</div>
+  </button>
+</nav>
+
+<script>
+// ======= Constants =======
+const COLORS = {
+  community_day:   '#E74C3C',
+  raid_hour:       '#8E44AD',
+  spotlight_hour:  '#F97316',
+  go_battle_league:'#3B82F6',
+  special_research:'#22C55E',
+  season:          '#14B8A6',
+  default:         '#3B82F6',
+};
+const LABELS = {
+  community_day:   'コミュニティデイ',
+  raid_hour:       'レイドアワー',
+  spotlight_hour:  'スポットライトアワー',
+  go_battle_league:'GOバトルリーグ',
+  special_research:'特別リサーチ',
+  season:          'シーズン',
+  default:         'イベント',
+};
+const MONTHS_JA = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+// ======= Translation =======
+// Longest phrases first so they match before shorter substrings
+const JA_DICT = [
+  // Event types
+  ['Community Day Classic',          'コミュニティデイ クラシック'],
+  ['Community Day',                  'コミュニティデイ'],
+  ['Raid Hour',                      'レイドアワー'],
+  ['Raid Day',                       'レイドデイ'],
+  ['Spotlight Hour',                 'スポットライトアワー'],
+  ['Hatch Day',                      'ふかそうち デイ'],
+  ['Weekend Event',                  '週末イベント'],
+  // Battle
+  ['GO Battle League',               'GOバトルリーグ'],
+  ['Great League',                   'グレートリーグ'],
+  ['Ultra League',                   'ウルトラリーグ'],
+  ['Master League',                  'マスターリーグ'],
+  ['Catch Cup',                      'キャッチカップ'],
+  ['Premier Cup',                    'プレミアカップ'],
+  // Research
+  ['Special Research',               '特別リサーチ'],
+  ['Timed Research',                 'タイムドリサーチ'],
+  // Raids
+  ['in 5-star Raid Battles',         'が5スターレイドに登場'],
+  ['5-star Raid Battles',            '5スターレイドバトル'],
+  ['in Mega Raids',                  'がメガレイドに登場'],
+  ['Mega Raids',                     'メガレイド'],
+  ['in Shadow Raids',                'がシャドウレイドに登場'],
+  ['Shadow Raids',                   'シャドウレイド'],
+  ['Raid Battles',                   'レイドバトル'],
+  ['Raid Battle',                    'レイドバトル'],
+  // Max battles
+  ['during Max Monday',              '（マックスマンデー）'],
+  ['Max Monday',                     'マックスマンデー'],
+  ['Super Mega Raid Day',            'スーパーメガレイドデイ'],
+  // Events
+  ['GO Fest',                        'GOフェス'],
+  ['GO Tour',                        'GOツアー'],
+  ['GO Pass',                        'GOパス'],
+  ['Promo Code',                     'プロモコード'],
+  // Seasons & months
+  ['Spring Marathon',                'スプリングマラソン'],
+  ['Spring',                         'スプリング'],
+  ['Summer',                         'サマー'],
+  ['Autumn', '                       オータム'],
+  ['Winter',                         'ウィンター'],
+  ['Marathon',                       'マラソン'],
+  // Misc
+  ['Classic',                        'クラシック'],
+  ['Season',                         'シーズン'],
+  ['Memories in Motion',             '動く記憶'],
+  ['Global',                         'グローバル'],
+  ['Example Event Template (Auto ToC Demo)', 'テンプレートイベント（サンプル）'],
+];
+
+function translateTitle(title) {
+  let t = title;
+  for (const [en, ja] of JA_DICT) {
+    t = t.split(en).join(ja);
+  }
+  return t;
+}
+
+// ======= State =======
+let events = [];
+let year = new Date().getFullYear();
+let month = new Date().getMonth();
+let selectedDay = null;
+
+// ======= API =======
+async function loadEvents() {
+  try {
+    const r = await fetch('/api/events');
+    const d = await r.json();
+    events = d.events || [];
+    setStatus(d.last_updated);
+    render();
+    renderUpcoming();
+  } catch(e) {
+    setStatus(null, true);
+    console.error(e);
+  }
+}
+
+async function refresh() {
+  document.getElementById('lastUpdated').textContent = '更新中...';
+  try {
+    const r = await fetch('/api/refresh');
+    const d = await r.json();
+    events = d.events || [];
+    setStatus(d.last_updated);
+    render();
+    renderUpcoming();
+    showToast('イベント情報を更新しました');
+  } catch(e) {
+    setStatus(null, true);
+  }
+}
+
+function setStatus(ts, err) {
+  const el = document.getElementById('lastUpdated');
+  const dot = document.getElementById('statusDot');
+  if (err) {
+    el.textContent = '取得エラー';
+    dot.style.background = '#EF4444';
+    return;
+  }
+  dot.style.background = '#22C55E';
+  if (!ts) { el.textContent = ''; return; }
+  const d = new Date(ts);
+  const diff = Math.floor((Date.now() - d) / 60000);
+  if (diff < 1) el.textContent = 'たった今更新';
+  else if (diff < 60) el.textContent = `${diff}分前に更新`;
+  else el.textContent = d.toLocaleString('ja', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) + 'に更新';
+}
+
+// ======= Calendar helpers =======
+function eventsForDay(y, m, d) {
+  const lo = new Date(y, m, d, 0, 0, 0).getTime();
+  const hi = new Date(y, m, d, 23, 59, 59).getTime();
+  return events.filter(ev => {
+    // Use whichever date is available
+    const s = ev.start ? new Date(ev.start).getTime() : null;
+    const e = ev.end   ? new Date(ev.end).getTime()   : null;
+    if (!s && !e) return false;
+    const rangeStart = s ?? e;
+    const rangeEnd   = e ?? s;
+    return rangeStart <= hi && rangeEnd >= lo;
+  });
+}
+
+// ======= Render Calendar =======
+function render() {
+  const grid = document.getElementById('calGrid');
+  document.getElementById('monthLabel').textContent = `${year}年 ${MONTHS_JA[month]}`;
+
+  const today = new Date();
+  const todayY = today.getFullYear(), todayM = today.getMonth(), todayD = today.getDate();
+  const firstWd = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrev = new Date(year, month, 0).getDate();
+
+  let html = '';
+
+  // Prev month padding
+  for (let i = firstWd - 1; i >= 0; i--) {
+    html += `<div class="day other"><div class="day-num">${daysInPrev - i}</div></div>`;
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = year===todayY && month===todayM && d===todayD;
+    const isSel   = selectedDay && selectedDay.y===year && selectedDay.m===month && selectedDay.d===d;
+    const evs     = eventsForDay(year, month, d);
+
+    const cls = ['day', isToday?'today':'', isSel?'selected':''].filter(Boolean).join(' ');
+    const MAX = 3;
+    const shown = evs.slice(0, MAX);
+    const more  = evs.length - MAX;
+
+    const pills = shown.map(ev => {
+      const c = COLORS[ev.type] || COLORS.default;
+      return `<div class="pill" style="background:${c}22;color:${c};border-left:2px solid ${c}">${translateTitle(ev.title)}</div>`;
+    }).join('');
+    const morePill = more > 0 ? `<div class="more-pill">+${more}件</div>` : '';
+
+    html += `<div class="${cls}" onclick="selectDay(${year},${month},${d})">
+      <div class="day-num">${d}</div>
+      <div class="ev-pills">${pills}${morePill}</div>
+    </div>`;
+  }
+
+  // Next month padding
+  const total = firstWd + daysInMonth;
+  const rem   = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let d = 1; d <= rem; d++) {
+    html += `<div class="day other"><div class="day-num">${d}</div></div>`;
+  }
+
+  grid.innerHTML = html;
+  renderLegend();
+}
+
+function renderLegend() {
+  const types = [...new Set(events.map(e => e.type))].filter(Boolean);
+  const el = document.getElementById('legend');
+  if (types.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = types.map(t =>
+    `<div class="leg-item">
+      <div class="leg-dot" style="background:${COLORS[t]||COLORS.default}"></div>
+      <span>${LABELS[t]||t}</span>
+    </div>`
+  ).join('');
+}
+
+// ======= Select Day =======
+function selectDay(y, m, d) {
+  selectedDay = {y, m, d};
+  render();
+
+  const dayEvs = eventsForDay(y, m, d);
+  const card   = document.getElementById('dayCard');
+  const title  = document.getElementById('dayCardTitle');
+  const list   = document.getElementById('dayList');
+  const dateStr = new Date(y, m, d).toLocaleDateString('ja', {year:'numeric', month:'long', day:'numeric', weekday:'short'});
+  title.textContent = `📅 ${dateStr}`;
+
+  if (dayEvs.length === 0) {
+    list.innerHTML = '<div class="empty">この日のイベントはありません</div>';
+  } else {
+    list.innerHTML = dayEvs.map(ev => cardHTML(ev)).join('');
+  }
+  card.style.display = 'block';
+  card.dataset.hasEvents = 'true';
+  // モバイルはイベントタブに切り替え
+  if (window.innerWidth <= 640) {
+    switchTab('events');
+  } else {
+    card.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+}
+
+// ======= Upcoming =======
+function renderUpcoming() {
+  const now = Date.now();
+  const upcoming = events
+    .filter(ev => {
+      if (!ev.start && !ev.end) return true;
+      const end = ev.end ? new Date(ev.end).getTime() : (ev.start ? new Date(ev.start).getTime() + 86399000 : Infinity);
+      return end >= now;
+    })
+    .sort((a, b) => {
+      if (!a.start) return 1;
+      if (!b.start) return -1;
+      return new Date(a.start) - new Date(b.start);
+    })
+    .slice(0, 25);
+
+  const el = document.getElementById('upcomingList');
+  if (upcoming.length === 0) {
+    el.innerHTML = '<div class="empty">現在公開中のイベントはありません</div>';
+  } else {
+    el.innerHTML = upcoming.map(ev => cardHTML(ev)).join('');
+  }
+}
+
+// ======= Card HTML =======
+function cardHTML(ev) {
+  const c     = COLORS[ev.type] || COLORS.default;
+  const label = LABELS[ev.type] || 'イベント';
+  const date  = formatDate(ev);
+  const delBtn = ev.source === 'custom'
+    ? `<button class="del-btn" onclick="deleteEvent('${ev.id}',event)" title="削除">×</button>`
+    : '';
+  const src = ev.source === 'leekduck' ? '📡 LeekDuck'
+            : ev.source === 'pokemongolive' ? '🏢 公式'
+            : ev.source === 'custom' ? '✏️ カスタム' : '';
+  return `<div class="ev-card" style="border-left-color:${c}" onclick="openModal('${ev.id}')">
+    ${delBtn}
+    <div class="ev-card-title">${translateTitle(ev.title)}</div>
+    ${date ? `<div class="ev-card-date">${date}</div>` : ''}
+    <div>
+      <span class="ev-type-tag" style="color:${c}">${label}</span>
+      <span class="ev-source">${src}</span>
+    </div>
+  </div>`;
+}
+
+function formatDate(ev) {
+  const opts = {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'};
+  if (ev.end) {
+    const e = new Date(ev.end).toLocaleString('ja', opts);
+    // If currently active (start ≈ now), just show end
+    const isActive = ev.start && Math.abs(new Date(ev.start) - Date.now()) < 60000;
+    if (isActive) return `終了: ${e}`;
+    if (ev.start) {
+      const s = new Date(ev.start).toLocaleString('ja', opts);
+      return `${s} 〜 ${e}`;
+    }
+    return `終了: ${e}`;
+  }
+  if (ev.start) {
+    return new Date(ev.start).toLocaleString('ja', opts) + ' 開始';
+  }
+  return '';
+}
+
+// ======= Modal =======
+function openModal(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+  const c = COLORS[ev.type] || COLORS.default;
+  const label = LABELS[ev.type] || 'イベント';
+  const date = formatDate(ev);
+  let html = '';
+  if (ev.image) {
+    html += `<img class="modal-img" src="${ev.image}" onerror="this.style.display='none'" alt="">`;
+  }
+  html += `<div class="modal-title" style="color:${c}">${translateTitle(ev.title)}</div>`;
+  html += `<div class="modal-date">${date}</div>`;
+  html += `<div style="margin-bottom:10px"><span class="ev-type-tag" style="color:${c}">${label}</span></div>`;
+  if (ev.url) {
+    html += `<a class="modal-link" href="${ev.url}" target="_blank" rel="noopener">詳細ページを見る →</a>`;
+  }
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(e) { if (e.target.id==='overlay') closeModalDirect(); }
+function closeModalDirect() { document.getElementById('overlay').classList.remove('open'); }
+
+// ======= Add Custom Event =======
+async function addEvent() {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) { showToast('イベント名を入力してください', true); return; }
+  const type  = document.getElementById('fType').value;
+  const start = document.getElementById('fStart').value || null;
+  const end   = document.getElementById('fEnd').value || null;
+  try {
+    const r = await fetch('/api/custom', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({title, type, start, end}),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      events.push(d.event);
+      document.getElementById('fTitle').value = '';
+      document.getElementById('fStart').value = '';
+      document.getElementById('fEnd').value = '';
+      render();
+      renderUpcoming();
+      showToast('イベントを追加しました ✓');
+    }
+  } catch(e) {
+    showToast('追加に失敗しました', true);
+  }
+}
+
+// ======= Delete Custom Event =======
+async function deleteEvent(id, e) {
+  e.stopPropagation();
+  if (!confirm('このイベントを削除しますか？')) return;
+  await fetch(`/api/custom/${id}`, {method:'DELETE'});
+  events = events.filter(ev => ev.id !== id);
+  render();
+  renderUpcoming();
+  if (selectedDay) selectDay(selectedDay.y, selectedDay.m, selectedDay.d);
+  showToast('削除しました');
+}
+
+// ======= Navigation =======
+function prevMonth() {
+  month--; if (month < 0) { month=11; year--; }
+  selectedDay = null;
+  document.getElementById('dayCard').style.display = 'none';
+  render();
+}
+function nextMonth() {
+  month++; if (month > 11) { month=0; year++; }
+  selectedDay = null;
+  document.getElementById('dayCard').style.display = 'none';
+  render();
+}
+function goToday() {
+  const now = new Date();
+  year = now.getFullYear(); month = now.getMonth();
+  selectedDay = null;
+  document.getElementById('dayCard').style.display = 'none';
+  render();
+}
+
+// ======= Toast =======
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderLeftColor = err ? '#EF4444' : '#22C55E';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ======= Tab switching (mobile) =======
+let currentTab = 'calendar';
+function switchTab(name) {
+  if (window.innerWidth > 640) return;
+  currentTab = name;
+
+  const calCard      = document.querySelector('.cal-card');
+  const dayCard      = document.getElementById('dayCard');
+  const eventsCard   = document.getElementById('section-events');
+  const addCard      = document.getElementById('section-add');
+
+  // Hide all
+  calCard.style.display    = 'none';
+  eventsCard.style.display = 'none';
+  addCard.style.display    = 'none';
+  if (dayCard) dayCard.style.display = 'none';
+
+  // Show active
+  if (name === 'calendar') {
+    calCard.style.display = '';
+  } else if (name === 'events') {
+    eventsCard.style.display = '';
+    if (dayCard && dayCard.dataset.hasEvents === 'true') dayCard.style.display = '';
+  } else if (name === 'add') {
+    addCard.style.display = '';
+  }
+
+  // Update nav button styles
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById(`btn-${name}`);
+  if (btn) btn.classList.add('active');
+}
+
+// On resize: restore all visibility if going desktop
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 640) {
+    document.querySelector('.cal-card').style.display = '';
+    document.getElementById('section-events').style.display = '';
+    document.getElementById('section-add').style.display = '';
+  } else {
+    switchTab(currentTab);
+  }
+});
+
+// ======= Auto refresh every 30 min =======
+setInterval(refresh, 30 * 60 * 1000);
+
+// ======= Init =======
+render(); // empty calendar immediately
+loadEvents();
+</script>
+</body>
+</html>

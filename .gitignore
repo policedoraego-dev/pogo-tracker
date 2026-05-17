@@ -1,0 +1,5 @@
+events_cache.json
+custom_events.json
+__pycache__/
+*.pyc
+.DS_Store
